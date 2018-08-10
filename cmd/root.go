@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var version string // Must be initialized with ldflags
+
 var (
 	logVerbose bool
 )
@@ -21,6 +23,14 @@ var createCmd = &cobra.Command{
 	Short: "Generate asset(s)",
 }
 
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print application version",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(version)
+	},
+}
+
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -30,5 +40,6 @@ func Execute() {
 
 func init() {
 	RootCmd.AddCommand(createCmd)
+	RootCmd.AddCommand(versionCmd)
 	createCmd.AddCommand(CreateAssetsCmd)
 }

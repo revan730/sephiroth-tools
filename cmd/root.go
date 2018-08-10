@@ -10,7 +10,8 @@ import (
 var version string // Must be initialized with ldflags
 
 var (
-	logVerbose bool
+	description string
+	keysFile    string
 )
 
 var RootCmd = &cobra.Command{
@@ -42,4 +43,9 @@ func init() {
 	RootCmd.AddCommand(createCmd)
 	RootCmd.AddCommand(versionCmd)
 	createCmd.AddCommand(CreateAssetsCmd)
+	createCmd.AddCommand(CreateStringsCmd)
+	CreateStringsCmd.Flags().StringVarP(&description, "description", "d",
+		"", "String resource description")
+	CreateStringsCmd.Flags().StringVarP(&keysFile, "keysFile", "k",
+		"", "File containing keys (one on each line) to populate resource")
 }

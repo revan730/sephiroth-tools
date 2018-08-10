@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"sync"
 	"text/template"
 )
 
@@ -17,9 +18,14 @@ var subDirs = []string{stringsDir, spriteSheetsDir}
 const templatesDir = "src/templates" // TODO: hardcoded, use templates and run with makefile instead
 const stringTemplateFile = "string.tpl"
 
-type StringTplData struct {
+type StringAsset struct {
 	Description string
 	Items       map[string]string
+}
+
+func logError(msg string, err error) {
+	fmt.Println("Fatal: ", msg)
+	fmt.Println(err)
 }
 
 // mkdir creates directory under current working directory
@@ -40,31 +46,16 @@ func createFile(filePath string) (*os.File, error) {
 	return os.Create(path.Join(pwd, filePath))
 }
 
-// CreateStringAsset generates string asset in strings directory with provided locale
-// and (optionally) with provided items
-func CreateStringAsset(name string, locale string, data interface{}) {
-	rawTpl, err := ioutil.ReadFile(path.Join(templatesDir, stringTemplateFile))
-	if err != nil {
-		fmt.Printf("Fatal: failed to open template file %s\n", stringTemplateFile)
-		fmt.Println(err)
-		return
-	}
-	strTpl := string(rawTpl)
-	tpl := template.New("String resource template")
-	tpl, err = tpl.Parse(strTpl)
-	if err != nil {
-		fmt.Printf("Fatal: failed to parse template file %s\n", stringTemplateFile)
-		fmt.Println(err)
-		return
-	}
+func writeStringsFile(wg *sync.WaitGroup, tpl *template.Template, name string, locale string, data interface{}) {
+	defer wg.Done()
+
 	strFile, err := createFile(path.Join(assetsDir, stringsDir, locale, name))
 	if err != nil {
-		fmt.Printf("Fatal: failed to create strings file %s\n", name)
-		fmt.Println(err)
+		logError("failed to create strings file "+name, err)
 		return
 	}
 	if data == nil {
-		dataExample := StringTplData{
+		dataExample := StringAsset{
 			Description: "Example string resource",
 			Items: map[string]string{
 				"foo": "bar",
@@ -76,36 +67,55 @@ func CreateStringAsset(name string, locale string, data interface{}) {
 		err = tpl.Execute(strFile, data)
 	}
 	if err != nil {
-		fmt.Printf("Fatal: failed to generate strings file %s\n", name)
-		fmt.Println(err)
+		logError("failed to generate strings file "+name, err)
 		return
 	}
+}
+
+// CreateStringAsset generates string asset in strings directory for each supported locale
+// and (optionally) with provided items
+func CreateStringAsset(name string, data interface{}) {
+	rawTpl, err := ioutil.ReadFile(path.Join(templatesDir, stringTemplateFile))
+	if err != nil {
+		logError("failed to open template file "+stringTemplateFile, err)
+		return
+	}
+	strTpl := string(rawTpl)
+	tpl := template.New("String resource template")
+	tpl, err = tpl.Parse(strTpl)
+	if err != nil {
+		logError("failed to parse template file "+stringTemplateFile, err)
+		return
+	}
+	var wg sync.WaitGroup
+	wg.Add(len(localesAll))
+	for _, locale := range localesAll {
+		go writeStringsFile(&wg, tpl, name, locale, data)
+	}
+	wg.Wait()
 }
 
 // CreateAssets generates assets directory with example assets
 func CreateAssets() {
 	err := mkdir(assetsDir)
 	if err != nil {
-		fmt.Println("Fatal: failed to create assets dir")
-		fmt.Println(err)
+		logError("failed to create assets dir", err)
 		return
 	}
 	for _, dir := range subDirs {
 		err := mkdir(path.Join(assetsDir, dir))
 		if err != nil {
-			fmt.Printf("Fatal: failed to create %s dir\n", dir)
-			fmt.Println(err)
+			logError("failed to create dir "+dir, err)
 			return
 		}
 	}
 	for _, localeDir := range localesAll {
 		err := mkdir(path.Join(assetsDir, stringsDir, localeDir))
 		if err != nil {
-			fmt.Printf("Fatal: failed to create string locales %s dir\n", localeDir)
-			fmt.Println(err)
+			logError("failed to create string locales dir "+localeDir, err)
 			return
 		}
 	}
 	// Generate examples
-	CreateStringAsset("example.yaml", LcEN, nil)
+	CreateStringAsset("example.yaml", nil)
 }

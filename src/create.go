@@ -12,10 +12,11 @@ import (
 const assetsDir = "assets"
 const stringsDir = "strings"
 const spriteSheetsDir = "spritesheets"
+const fontsDir = "fonts"
 
-var subDirs = []string{stringsDir, spriteSheetsDir}
+var subDirs = []string{stringsDir, spriteSheetsDir, fontsDir}
 
-const templatesDir = "src/templates" // TODO: hardcoded, use templates and run with makefile instead
+const templatesDir = "templates"
 const stringTemplateFile = "string.tpl"
 
 type StringAsset struct {
